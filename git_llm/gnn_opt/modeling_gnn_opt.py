@@ -125,12 +125,12 @@ class GNNEncoder(nn.Module):
 
         return torch.concat(
             tensors=[
-                flow_pooled_mean.squeeze(),
-                flow_pooled_max.squeeze(),
-                flow_pooled_min.squeeze(),
-                host_pooled_mean.squeeze(),
-                host_pooled_max.squeeze(),
-                host_pooled_min.squeeze(),
+                flow_pooled_mean,
+                flow_pooled_max,
+                flow_pooled_min,
+                host_pooled_mean,
+                host_pooled_max,
+                host_pooled_min,
             ],
             dim=1,
         )
@@ -192,7 +192,7 @@ class GNNOPTModel(OPTModel):
     def __init__(self, config: OPTConfig):
         super(GNNOPTModel, self).__init__(config)
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
         # load my GNN
         gnn_model = GNNModel(
@@ -207,7 +207,8 @@ class GNNOPTModel(OPTModel):
         self.graph_projection = GNNProjection(
             # IMPORTANT: see the output of GNNEncoder. Length of pooled flow vectors and pooled host vectors are 64 each, so 64*6 if all vectors are concatenated.
             input_vec_length=64 * 6,
-            hidden_vec_length=1024,  # This was determined by seeing OPTConfig
+            hidden_vec_length=2560,  # IMPORTANT: This was determined by seeing OPTConfig
+            # opt-350m: 1024, opt-1.3b: 2048, opt-2.7b: 2560
         )
 
         self.embed_positions = OPTLearnedPositionalEmbedding(
@@ -380,7 +381,7 @@ class GNNOPTModel(OPTModel):
 
             # IMPORTANT: 2. Convert features extracted by ViT into prompt-like Image Embeddings
             projected_graph_features = self.graph_projection(graph_features)
-            projected_graph_features = projected_graph_features.squeeze().unsqueeze(1)
+            projected_graph_features = projected_graph_features  # NOTE: temporally removed .squeeze().unsqueeze(1)
 
         # IMPORTANT: 3. Vectorize the tokens
         # https://github.com/huggingface/transformers/blob/main/src/transformers/models/opt/modeling_opt.py#L634-L658

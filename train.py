@@ -1,6 +1,7 @@
 import glob
 import json
 import os
+import random
 from typing import Any, Optional, Union
 
 import datasets
@@ -22,6 +23,19 @@ from transformers import (
 )
 
 GitLLMForCausalLM = Any
+
+INSTRUCTION_CANDIDATES = [
+    "Summarize the data traffic and functionality patterns observed on this computer network.",
+    "Provide a high-level overview of the dominant communication pathways and resource utilization within this network.",
+    "Summarize the key protocols and applications driving activity on this computer network.",
+    "Offer a condensed depiction of the typical behaviors and functions observed within this network.",
+    "Enumerate the types of data flowing through and the actions being performed on this network.",
+    "Provide a succinct overview of the prevalent activities transpiring across this network.",
+    "Offer a description of the typical network traffic and application usage patterns observed on this system.",
+    "Distill the essence of the network's behavior into a succinct report, emphasizing salient characteristics and potential anomalies.",
+    "Elucidate the primary network functions and protocols employed in facilitating user interactions and data exchanges.",
+    "Characterize the network's operational dynamics through a concise analysis of traffic metrics, application usage, and resource allocation.",
+]
 
 
 # SupervisedDataset
@@ -121,7 +135,7 @@ class SupervisedDataset(Dataset):
         with open(json_filename) as jf:
             json_dict = json.load(jf)
 
-        instruction = "Give a concise description of activities on this network"
+        instruction = random.choice(INSTRUCTION_CANDIDATES)
         question = ""
         answer = json_dict["response"]
         text = f"##Instruction: {instruction} ##Question: {question} ##Answer: {answer}"
@@ -260,22 +274,22 @@ class SupervisedDataset(Dataset):
 
         host_sends = torch.stack(
             [
-                torch.from_numpy(np.array(pointing_host2flow)),
-                torch.from_numpy(np.array(pointed_host2flow)),
+                torch.from_numpy(np.array(pointing_host2flow, dtype=int)),
+                torch.from_numpy(np.array(pointed_host2flow, dtype=int)),
             ],
             dim=0,
         )
         flow_reaches = torch.stack(
             [
-                torch.from_numpy(np.array(pointing_flow2host)),
-                torch.from_numpy(np.array(pointed_flow2host)),
+                torch.from_numpy(np.array(pointing_flow2host, dtype=int)),
+                torch.from_numpy(np.array(pointed_flow2host, dtype=int)),
             ],
             dim=0,
         )
         flow_precedes = torch.stack(
             [
-                torch.from_numpy(np.array(pointing_flow2flow)),
-                torch.from_numpy(np.array(pointed_flow2flow)),
+                torch.from_numpy(np.array(pointing_flow2flow, dtype=int)),
+                torch.from_numpy(np.array(pointed_flow2flow, dtype=int)),
             ],
             dim=0,
         )
@@ -421,7 +435,7 @@ def get_dataset(config: dict) -> Union[Dataset, Dataset]:
     return train_dataset, val_dataset
 
 
-def main(config_file: str):
+def main(config_file: str, local_rank: int):
     # get config
     with open(config_file, "r") as i_:
         config = yaml.safe_load(i_)
@@ -432,7 +446,7 @@ def main(config_file: str):
         )
 
     # distributed learning
-    deepspeed.init_distributed()
+    deepspeed.init_distributed(rank=local_rank)
 
     # model
     model_name = config["settings"]["model_name"]

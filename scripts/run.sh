@@ -1,7 +1,6 @@
 #!/bin/bash
-export WANDB_PROJECT=git_llm
+export WANDB_PROJECT=gnn_llm
 
-# llama 7b
-# projection + lora
-export WANDB_NAME=exp050_llama
+# opt-350m
+export WANDB_NAME=exp050_opt2.7b
 deepspeed train.py --config_file configs/training_config_$WANDB_NAME.yml
